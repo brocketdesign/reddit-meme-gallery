@@ -447,7 +447,15 @@ function MemeGallery({ subreddit = 'memes' }) {
         );
       } else {
         // For images or GIFs we can use img tag
-        return <img src={url} alt={meme.data.title} className="media-content" />;
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.src = url;
+          img.onload = () => resolve(<img src={url} alt={meme.data.title} className="media-content" />);
+          img.onerror = () => {
+            console.error(`Failed to load image: ${url}`);
+            resolve(null); // Return null if image fails to load
+          };
+        });
       }
     }
     
