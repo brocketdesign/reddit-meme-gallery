@@ -179,23 +179,37 @@ const LazyRedGif = React.memo(({ gifId, thumbnailUrl, memeId }) => {
 });
 
 function App() {
+  // Retrieve visitedSubreddits from local storage
+  const visitedSubreddits = JSON.parse(localStorage.getItem('visitedSubreddits')) || [];
+  const navigate = useNavigate();
+  const location = window.location;
+
+  useEffect(() => {
+    // Only perform redirection if currently at the root path
+    if (location.pathname === "/") {
+      if (visitedSubreddits.length > 0) {
+        // Redirect to the last visited subreddit
+        const lastVisitedSubreddit = visitedSubreddits[0].display_name;
+        navigate(`/r/${lastVisitedSubreddit}`);
+      } else {
+        // Redirect to search page when no visited subreddits are available
+        navigate('/search');
+      }
+    }
+  }, [visitedSubreddits, navigate, location.pathname]);
+
   return (
-    <Router>
-      <div className="App">
-        <Navigation />
-        
-        <main className="px-3 py-6">
-          <Routes>
-            {/* Redirect to search if the path is exactly "/" */}
-            <Route path="/" element={<Navigate to="/search" />} />
-            <Route path="/search" element={<Search />} />
-            <Route path="/r/:subreddit" element={<SubredditRoute />} />
-            {/* Add a route for individual meme pages */}
-            <Route path="/r/:subreddit/:memeId" element={<MemePage />} />
-          </Routes>
-        </main>
-      </div>
-    </Router>
+    <div className="App">
+      <Navigation />
+      
+      <main className="px-3 py-6">
+        <Routes>
+          <Route path="/search" element={<Search />} />
+          <Route path="/r/:subreddit" element={<SubredditRoute />} />
+          <Route path="/r/:subreddit/:memeId" element={<MemePage />} />
+        </Routes>
+      </main>
+    </div>
   );
 }
 

@@ -7,12 +7,12 @@ function Navigation() {
     <header className="border-b bg-background sticky top-0 z-50">
       <div className="container flex h-16 items-center px-4">
         <Link to="/" className="flex items-center space-x-2 font-bold text-xl">
-          <span>Reddit Meme Gallery</span>
+          <span>RedditKing</span>
         </Link>
         <nav className="ml-auto flex items-center space-x-4">
           <Link 
             to="/search" 
-            className="p-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md flex items-center justify-center"
+            className="p-2 bg-transparent text-dark-foreground rounded-md flex items-center justify-center"
           >
             <FaSearch size={18} />
           </Link>

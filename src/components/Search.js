@@ -1,19 +1,91 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { X } from 'lucide-react';
+import { Helmet } from 'react-helmet-async';
 
 function Search() {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [visitedSubreddits, setVisitedSubreddits] = useState([]);
+  const [hoveredSubredditId, setHoveredSubredditId] = useState(null);
+  const [timeoutIds, setTimeoutIds] = useState({});
+
+  useEffect(() => {
+    // Load data from local storage on component mount
+    const storedSearchTerm = localStorage.getItem('searchTerm');
+    const storedSearchResults = localStorage.getItem('searchResults');
+
+    if (storedSearchTerm && storedSearchResults) {
+      setSearchTerm(storedSearchTerm);
+      setSearchResults(JSON.parse(storedSearchResults));
+    }
+
+    // Load visited subreddits from local storage
+    const storedVisitedSubreddits = localStorage.getItem('visitedSubreddits');
+    if (storedVisitedSubreddits) {
+      setVisitedSubreddits(JSON.parse(storedVisitedSubreddits));
+    }
+  }, []);
 
   const handleSearchChange = (event) => {
-    setSearchTerm(event.target.value);
+    const newSearchTerm = event.target.value;
+    setSearchTerm(newSearchTerm);
+    
+    // Trigger search only if the search term is not empty
+    if (newSearchTerm.trim()) {
+      handleSearch(newSearchTerm);
+    } else {
+      // Clear results if the search term is empty
+      setSearchResults([]);
+      localStorage.removeItem('searchTerm');
+      localStorage.removeItem('searchResults');
+    }
+  };
+
+  const handleSearch = async (term) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`https://www.reddit.com/subreddits/search.json?q=${encodeURIComponent(term)}&include_over_18=1`);
+      const data = await response.json();
+      
+      if (data && data.data && data.data.children) {
+        const results = data.data.children.map(item => item.data);
+        setSearchResults(results);
+
+        localStorage.setItem('searchTerm', term);
+        localStorage.setItem('searchResults', JSON.stringify(results));
+      } else {
+        setError('No results found');
+        setSearchResults([]);
+
+        localStorage.removeItem('searchTerm');
+        localStorage.removeItem('searchResults');
+      }
+    } catch (error) {
+      console.error('Error searching subreddits:', error);
+      setError('Error searching subreddits. Please try again.');
+      setSearchResults([]);
+
+      localStorage.removeItem('searchTerm');
+      localStorage.removeItem('searchResults');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSearchSubmit = async (event) => {
     event.preventDefault();
-    if (!searchTerm.trim()) return;
+    if (!searchTerm.trim()) {
+      // Clear local storage if search term is empty
+      localStorage.removeItem('searchTerm');
+      localStorage.removeItem('searchResults');
+      setSearchResults([]);
+      return;
+    }
     
     setIsLoading(true);
     setError(null);
@@ -23,26 +95,80 @@ function Search() {
       const data = await response.json();
       
       if (data && data.data && data.data.children) {
-        setSearchResults(data.data.children.map(item => item.data));
+        const results = data.data.children.map(item => item.data);
+        setSearchResults(results);
+
+        // Save search term and results to local storage
+        localStorage.setItem('searchTerm', searchTerm);
+        localStorage.setItem('searchResults', JSON.stringify(results));
       } else {
         setError('No results found');
         setSearchResults([]);
+
+        // Clear local storage if no results are found
+        localStorage.removeItem('searchTerm');
+        localStorage.removeItem('searchResults');
       }
     } catch (error) {
       console.error('Error searching subreddits:', error);
       setError('Error searching subreddits. Please try again.');
       setSearchResults([]);
+
+      // Clear local storage on error
+      localStorage.removeItem('searchTerm');
+      localStorage.removeItem('searchResults');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleSubredditClick = (subreddit) => {
+    // Update visited subreddits in local storage
+    let updatedVisitedSubreddits = [
+      subreddit,
+      ...visitedSubreddits.filter((v) => v.id !== subreddit.id),
+    ].slice(0, 5); // Limit to last 5 visited subreddits
+
+    localStorage.setItem(
+      'visitedSubreddits',
+      JSON.stringify(updatedVisitedSubreddits)
+    );
+    setVisitedSubreddits(updatedVisitedSubreddits);
+  };
+
+  const handleMouseEnter = (subredditId) => {
+    const timeoutId = setTimeout(() => {
+      setHoveredSubredditId(subredditId);
+    }, 1000); // 1 second delay
+    setTimeoutIds((prev) => ({ ...prev, [subredditId]: timeoutId }));
+  };
+
+  const handleMouseLeave = (subredditId) => {
+    clearTimeout(timeoutIds[subredditId]);
+    setHoveredSubredditId(null);
+    setTimeoutIds((prev) => ({ ...prev, [subredditId]: null }));
+  };
+
+  const handleRemoveVisited = (subredditId) => {
+    const updatedVisitedSubreddits = visitedSubreddits.filter(
+      (v) => v.id !== subredditId
+    );
+    localStorage.setItem(
+      'visitedSubreddits',
+      JSON.stringify(updatedVisitedSubreddits)
+    );
+    setVisitedSubreddits(updatedVisitedSubreddits);
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="max-w-3xl mx-auto">
+      <Helmet>
+        <title>Gallery - Search Subreddits</title>
+      </Helmet>
+      <div className="mx-auto">
         <h1 className="text-3xl font-bold mb-8 text-center">Search Subreddits</h1>
         
-        <form onSubmit={handleSearchSubmit} className="mb-8">
+        <div className="mb-8 mx-auto max-w-md">
           <div className="flex gap-2">
             <input
               type="text"
@@ -51,19 +177,48 @@ function Search() {
               onChange={handleSearchChange}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 flex-1"
             />
-            <button 
-              type="submit" 
-              className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Searching...' : 'Search'}
-            </button>
           </div>
-        </form>
+        </div>
 
         {error && (
           <div className="bg-destructive/15 text-destructive p-4 rounded-md mb-6">
             {error}
+          </div>
+        )}
+
+        {visitedSubreddits.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold mb-3">Last Visited Subreddits</h2>
+            <div className="flex flex-wrap gap-3">
+              {visitedSubreddits.map((subreddit) => (
+                <div
+                  key={subreddit.id}
+                  className="relative"
+                  onMouseEnter={() => handleMouseEnter(subreddit.id)}
+                  onMouseLeave={() => handleMouseLeave(subreddit.id)}
+                >
+                  <Link
+                    to={`/r/${subreddit.display_name}`}
+                    className="bg-card border rounded-lg overflow-hidden hover:shadow-md transition-shadow block"
+                    onClick={() => handleSubredditClick(subreddit)}
+                  >
+                    <div className="p-4">
+                      <h3 className="text-lg font-semibold">
+                        r/{subreddit.display_name}
+                      </h3>
+                    </div>
+                  </Link>
+                  {hoveredSubredditId === subreddit.id && (
+                    <button
+                      className="absolute top-1 right-1 bg-gray-200 rounded-full p-1 hover:bg-gray-300"
+                      onClick={() => handleRemoveVisited(subreddit.id)}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -73,6 +228,7 @@ function Search() {
               to={`/r/${subreddit.display_name}`} 
               key={subreddit.id}
               className="block bg-card border rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+              onClick={() => handleSubredditClick(subreddit)}
             >
               <div className="p-4">
                 <h2 className="text-xl font-semibold mb-1">r/{subreddit.display_name}</h2>

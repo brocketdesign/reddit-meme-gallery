@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Masonry from 'react-masonry-css';
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 
 // Create a reusable LazyVideo component for all video types
 const LazyVideo = React.memo(({ videoUrl, thumbnailUrl, videoType = "video/mp4" }) => {
@@ -529,6 +530,9 @@ function MemeGallery({ subreddit = 'memes' }) {
 
   return (
     <div className="meme-gallery">
+      <Helmet>
+        <title>r/{subreddit} - Reddit Meme Gallery</title>
+      </Helmet>
       <h2 className="text-2xl font-bold mb-6 text-center">r/{subreddit}</h2>
       
       {/* Remove the pagination UI controls */}

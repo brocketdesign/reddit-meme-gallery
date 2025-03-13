@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MemeGallery from './MemeGallery';
+import { Helmet } from 'react-helmet-async';
 
 // Import components used by MemePage
 const LazyVideo = React.memo(({ videoUrl, thumbnailUrl, videoType = "video/mp4" }) => {
@@ -224,7 +225,10 @@ function MemePage() {
   // Process media and extract thumbnail
   useEffect(() => {
     if (!meme) return;
-
+    
+    // Clear previously rendered media before processing new meme
+    setRenderedMedia(null);
+    
     const { url, media, post_hint, secure_media, thumbnail, preview } = meme.data;
     
     // Extract thumbnail
@@ -253,6 +257,7 @@ function MemePage() {
     if (media && media.reddit_video) {
       setRenderedMedia(
         <LazyVideo 
+          key={`${meme.data.id}-redditvideo`}
           videoUrl={media.reddit_video.fallback_url} 
           thumbnailUrl={thumbnailUrl}
           videoType="video/mp4"
@@ -266,6 +271,7 @@ function MemePage() {
       if (preview && preview.reddit_video_preview && preview.reddit_video_preview.fallback_url) {
         setRenderedMedia(
           <LazyVideo 
+            key={`${meme.data.id}-preview`}
             videoUrl={preview.reddit_video_preview.fallback_url} 
             thumbnailUrl={thumbnailUrl}
             videoType="video/mp4"
@@ -277,8 +283,7 @@ function MemePage() {
         
         if (url && url.includes('redgifs')) {
           const urlParts = url.split('/');
-          redgifsId = urlParts[urlParts.length - 1];
-          redgifsId = redgifsId.split('?')[0];
+          redgifsId = urlParts[urlParts.length - 1].split('?')[0];
         } else if (secure_media && secure_media.oembed && secure_media.oembed.html) {
           const html = secure_media.oembed.html;
           const match = html.match(/redgifs\.com\/(?:watch|ifr)\/([^"&?/]+)/);
@@ -290,19 +295,21 @@ function MemePage() {
         if (redgifsId) {
           setRenderedMedia(
             <LazyRedGif 
+              key={`${meme.data.id}-redgifs`}
               gifId={redgifsId} 
               thumbnailUrl={thumbnailUrl}
               memeId={meme.data.id}
             />
           );
         } else {
-          setRenderedMedia(<p>Unable to load RedGifs content</p>);
+          setRenderedMedia(<p key={`${meme.data.id}-error`}>Unable to load RedGifs content</p>);
         }
       }
     } else if (url && url.includes('.gifv')) {
       const mp4Url = url.replace('.gifv', '.mp4');
       setRenderedMedia(
         <LazyVideo 
+          key={`${meme.data.id}-gifv`}
           videoUrl={mp4Url} 
           thumbnailUrl={thumbnailUrl}
           videoType="video/mp4"
@@ -312,6 +319,7 @@ function MemePage() {
       const videoType = url.endsWith('.mp4') ? 'video/mp4' : 'video/webm';
       setRenderedMedia(
         <LazyVideo 
+          key={`${meme.data.id}-video`}
           videoUrl={url} 
           thumbnailUrl={thumbnailUrl}
           videoType={videoType}
@@ -319,9 +327,16 @@ function MemePage() {
       );
     } else if (url) {
       // For images
-      setRenderedMedia(<img src={url} alt={meme.data.title} className="media-content" />);
+      setRenderedMedia(
+        <img 
+          key={`${meme.data.id}-img`}
+          src={url} 
+          alt={meme.data.title} 
+          className="media-content" 
+        />
+      );
     } else {
-      setRenderedMedia(<p>Media not available</p>);
+      setRenderedMedia(<p key={`${meme.data.id}-none`}>Media not available</p>);
     }
   }, [meme, memeId]);
 
@@ -329,7 +344,7 @@ function MemePage() {
   useEffect(() => {
     const fetchSimilarSubreddits = async () => {
       try {
-        const response = await fetch(`https://www.reddit.com/search.json?q=${subreddit}&type=sr&limit=10`);
+        const response = await fetch(`https://www.reddit.com/search.json?q=${subreddit}&type=sr&limit=10&include_over_18=1`);
         if (!response.ok) {
           throw new Error(`Reddit API responded with status ${response.status}`);
         }
@@ -392,6 +407,9 @@ function MemePage() {
 
   return (
     <div className="meme-page">
+      <Helmet>
+        <title>r/{subreddit} - {meme ? meme.data.title : 'Meme Gallery'}</title>
+      </Helmet>
       {/* Centered content container */}
       <div className="max-w-4xl mx-auto">
         <div className="navigation-header mb-4">
