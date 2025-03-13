@@ -344,3 +344,133 @@ img.media-content {
 .hidden {
   display: none !important;
 }
+
+/* Modern MemePage Styling */
+.meme-page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.meme-detail-card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.meme-content-wrapper {
+  display: flex;
+  justify-content: center;
+  background-color: #f0f0f0;
+  padding: 20px;
+  max-height: 70vh;
+  overflow: hidden;
+}
+
+.meme-content-wrapper img, 
+.meme-content-wrapper video {
+  max-width: 100%;
+  max-height: 70vh;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.no-media-placeholder {
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f0f0f0;
+  color: #666;
+  font-size: 18px;
+}
+
+.meme-info {
+  padding: 20px;
+}
+
+.meme-title {
+  font-size: 24px;
+  margin-bottom: 12px;
+  color: #222;
+}
+
+.meme-description {
+  color: #444;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.meme-metadata {
+  display: flex;
+  justify-content: space-between;
+  color: #888;
+  font-size: 14px;
+  margin-top: 16px;
+}
+
+.similar-subreddits-section {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.similar-subreddits-section h3 {
+  margin-top: 0;
+  color: #444;
+  font-size: 18px;
+  margin-bottom: 12px;
+}
+
+.subreddit-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.subreddit-chip {
+  display: inline-block;
+  padding: 8px 16px;
+  background-color: #f0f2f5;
+  color: #1a1a1a;
+  border-radius: 20px;
+  text-decoration: none;
+  transition: background-color 0.2s;
+  font-size: 14px;
+}
+
+.subreddit-chip:hover {
+  background-color: #e4e6eb;
+}
+
+.more-memes-section h2 {
+  color: #333;
+  font-size: 22px;
+  margin-bottom: 16px;
+}
+
+.infinite-scroll-container {
+  /* Ensure it takes up full width to display gallery correctly */
+  width: 100%;
+}
+
+/* For mobile responsiveness */
+@media (max-width: 768px) {
+  .meme-content-wrapper {
+    max-height: 50vh;
+  }
+  
+  .meme-title {
+    font-size: 20px;
+  }
+  
+  .meme-content-wrapper img, 
+  .meme-content-wrapper video {
+    max-height: 50vh;
+  }
+}
