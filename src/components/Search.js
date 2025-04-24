@@ -11,6 +11,7 @@ function Search() {
   const [visitedSubreddits, setVisitedSubreddits] = useState([]);
   const [hoveredSubredditId, setHoveredSubredditId] = useState(null);
   const [timeoutIds, setTimeoutIds] = useState({});
+  const [hasSearched, setHasSearched] = useState(false);
 
   useEffect(() => {
     // Load data from local storage on component mount
@@ -20,6 +21,7 @@ function Search() {
     if (storedSearchTerm && storedSearchResults) {
       setSearchTerm(storedSearchTerm);
       setSearchResults(JSON.parse(storedSearchResults));
+      setHasSearched(true);
     }
 
     // Load visited subreddits from local storage
@@ -32,12 +34,9 @@ function Search() {
   const handleSearchChange = (event) => {
     const newSearchTerm = event.target.value;
     setSearchTerm(newSearchTerm);
-    
-    // Trigger search only if the search term is not empty
-    if (newSearchTerm.trim()) {
-      handleSearch(newSearchTerm);
-    } else {
-      // Clear results if the search term is empty
+    setHasSearched(false);
+    // No longer trigger search here, only update the input value
+    if (!newSearchTerm.trim()) {
       setSearchResults([]);
       localStorage.removeItem('searchTerm');
       localStorage.removeItem('searchResults');
@@ -79,6 +78,7 @@ function Search() {
 
   const handleSearchSubmit = async (event) => {
     event.preventDefault();
+    setHasSearched(true);
     if (!searchTerm.trim()) {
       // Clear local storage if search term is empty
       localStorage.removeItem('searchTerm');
@@ -169,7 +169,7 @@ function Search() {
         <h1 className="text-3xl font-bold mb-8 text-center">Search Subreddits</h1>
         
         <div className="mb-8 mx-auto max-w-md">
-          <div className="flex gap-2">
+          <form className="flex gap-2" onSubmit={handleSearchSubmit}>
             <input
               type="text"
               placeholder="Enter subreddit name..."
@@ -177,7 +177,14 @@ function Search() {
               onChange={handleSearchChange}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 flex-1"
             />
-          </div>
+            <button
+              type="submit"
+              className="h-10 px-4 rounded-md bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
+              disabled={isLoading || !searchTerm.trim()}
+            >
+              {isLoading ? 'Searching...' : 'Search'}
+            </button>
+          </form>
         </div>
 
         {error && (
@@ -243,7 +250,7 @@ function Search() {
           ))}
         </div>
 
-        {searchResults.length === 0 && !isLoading && !error && searchTerm && (
+        {searchResults.length === 0 && !isLoading && !error && hasSearched && (
           <p className="text-center text-muted-foreground">No results found. Try a different search term.</p>
         )}
       </div>

@@ -234,6 +234,26 @@ function MemeGallery({ subreddit = 'memes' }) {
     fetchMemes();
   }, [subreddit]);
   
+  // Helper to extract the best thumbnail for a meme
+  const extractThumbnailUrl = (meme) => {
+    const { thumbnail, preview } = meme.data;
+    let thumbnailUrl = null;
+    if (preview && preview.images && preview.images.length > 0) {
+      const image = preview.images[0];
+      const resolutions = [...image.resolutions].sort((a, b) => b.width - a.width);
+      const bestResolution = resolutions.find(r => r.width <= 640) || resolutions[resolutions.length - 1];
+      if (bestResolution) {
+        thumbnailUrl = bestResolution.url.replace(/&amp;/g, '&');
+      } else if (image.source) {
+        thumbnailUrl = image.source.url.replace(/&amp;/g, '&');
+      }
+    }
+    if (!thumbnailUrl && thumbnail && thumbnail !== 'self' && thumbnail !== 'default') {
+      thumbnailUrl = thumbnail;
+    }
+    return thumbnailUrl;
+  };
+
   const fetchMemes = () => {
     // Prevent fetching the first page multiple times
     if (!after && firstPageLoaded) {
@@ -296,6 +316,16 @@ function MemeGallery({ subreddit = 'memes' }) {
             });
             setSeenUrls(updatedSeenUrls);
             
+            // Precompute and set thumbnails for new memes before rendering media
+            const newThumbnails = {};
+            newMemes.forEach(meme => {
+              const thumb = extractThumbnailUrl(meme);
+              if (thumb) newThumbnails[meme.data.id] = thumb;
+            });
+            if (Object.keys(newThumbnails).length > 0) {
+              setThumbnails(prev => ({ ...prev, ...newThumbnails }));
+            }
+
             // Add new unique memes
             setMemes(prevMemes => [...prevMemes, ...newMemes]);
             setAfter(data.data.after);
@@ -325,50 +355,22 @@ function MemeGallery({ subreddit = 'memes' }) {
     }
   };
 
-  // Helper function to determine media type and render appropriately
+  // Remove thumbnail extraction from renderMedia, just use thumbnails state
   const renderMedia = useCallback(async (meme) => {
     const { url, media, post_hint, secure_media, thumbnail, preview } = meme.data;
 
-    // Store thumbnail for this post if available and we don't have it yet
-    if (!thumbnails[meme.data.id]) {
-      let thumbnailUrl = null;
-      
-      // Try to get the best quality thumbnail
-      if (preview && preview.images && preview.images.length > 0) {
-        const image = preview.images[0];
-        
-        // Get the highest resolution preview that's not too large
-        const resolutions = [...image.resolutions].sort((a, b) => b.width - a.width);
-        const bestResolution = resolutions.find(r => r.width <= 640) || resolutions[resolutions.length - 1];
-        
-        if (bestResolution) {
-          thumbnailUrl = bestResolution.url.replace(/&amp;/g, '&');
-        } else if (image.source) {
-          thumbnailUrl = image.source.url.replace(/&amp;/g, '&');
-        }
-      }
-      
-      // Fallback to the default thumbnail if necessary
-      if (!thumbnailUrl && thumbnail && thumbnail !== 'self' && thumbnail !== 'default') {
-        thumbnailUrl = thumbnail;
-      }
-      
-      if (thumbnailUrl) {
-        setThumbnails(prev => ({ ...prev, [meme.data.id]: thumbnailUrl }));
-      }
-    }
-    
-    // Handle Reddit videos
+    // Use precomputed thumbnail
+    const thumbUrl = thumbnails[meme.data.id];
+
     if (media && media.reddit_video) {
       return (
         <LazyVideo 
           videoUrl={media.reddit_video.fallback_url} 
-          thumbnailUrl={thumbnails[meme.data.id]}
+          thumbnailUrl={thumbUrl}
           videoType="video/mp4"
         />
       );
     }
-    
     // Handle all RedGifs URLs - including those embedded in secure_media
     if ((url && url.includes('redgifs')) || 
         (secure_media && secure_media.oembed && 
@@ -380,7 +382,7 @@ function MemeGallery({ subreddit = 'memes' }) {
             return (
               <LazyVideo 
                 videoUrl={preview.reddit_video_preview.fallback_url} 
-                thumbnailUrl={thumbnails[meme.data.id]}
+                thumbnailUrl={thumbUrl}
                 videoType="video/mp4"
               />
             );
@@ -408,7 +410,7 @@ function MemeGallery({ subreddit = 'memes' }) {
             return (
               <LazyRedGif 
                 gifId={redgifsId} 
-                thumbnailUrl={thumbnails[meme.data.id]}
+                thumbnailUrl={thumbUrl}
                 memeId={meme.data.id}
               />
             );
@@ -425,7 +427,7 @@ function MemeGallery({ subreddit = 'memes' }) {
       return (
         <LazyVideo 
           videoUrl={mp4Url} 
-          thumbnailUrl={thumbnails[meme.data.id]}
+          thumbnailUrl={thumbUrl}
           videoType="video/mp4"
         />
       );
@@ -441,7 +443,7 @@ function MemeGallery({ subreddit = 'memes' }) {
         return (
           <LazyVideo 
             videoUrl={url} 
-            thumbnailUrl={thumbnails[meme.data.id]}
+            thumbnailUrl={thumbUrl}
             videoType={videoType}
           />
         );

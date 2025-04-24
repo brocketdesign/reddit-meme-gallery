@@ -6,15 +6,30 @@ const fetch = require('node-fetch');
 router.get('/reddit/:subreddit', async (req, res) => {
   const { subreddit } = req.params;
   const { sort = 'hot', limit = 50 } = req.query;
-  
+
   try {
     const response = await fetch(`https://www.reddit.com/r/${subreddit}/${sort}.json?limit=${limit}`);
     const data = await response.json();
-    console.log(`[Reddit] Fetched ${data.data?.children?.length || 0} posts from r/${subreddit}`);
-    res.json(data);
+    const posts = data.data?.children || [];
+
+    // Filter for posts with media (images or videos)
+    const mediaPosts = posts
+      .map(post => post.data)
+      .filter(post =>
+        // Images: direct image, preview, or gallery
+        post.post_hint === 'image' ||
+        (post.preview && post.preview.images && post.preview.images.length > 0) ||
+        (post.is_gallery && post.media_metadata) ||
+        // Videos: Reddit-hosted or embedded
+        post.is_video ||
+        (post.media && (post.media.reddit_video || post.media.oembed))
+      );
+
+    console.log(`[Reddit] Fetched ${mediaPosts.length} media posts from r/${subreddit}`);
+    res.json({ media: mediaPosts });
   } catch (error) {
     console.error(`[Reddit] Error fetching from r/${subreddit}:`, error);
-    res.status(500).json({ error: 'Failed to fetch Reddit posts' });
+    res.status(500).json({ error: 'Failed to fetch Reddit media posts' });
   }
 });
 
