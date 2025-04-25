@@ -101,9 +101,8 @@
 }
 
 .masonry-grid_column {
-  padding: 0 10px;
+  padding: 0 5px;
   background-clip: padding-box;
-  padding-left: 16px; /* Gutter size */
 }
 
 .masonry-item {
@@ -181,7 +180,6 @@
 }
 
 video.media-content {
-  max-height: 600px;
   margin: 0 auto;
   z-index: 2;
   position: relative;

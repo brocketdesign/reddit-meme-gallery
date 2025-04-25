@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Masonry from 'react-masonry-css';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+// Icon imports
+import { TbDownload, TbHome, TbSearch, TbPuzzle, TbTag } from 'react-icons/tb';
 
 // Create a reusable LazyVideo component for all video types
 const LazyVideo = React.memo(({ videoUrl, thumbnailUrl, videoType = "video/mp4" }) => {
@@ -221,6 +223,38 @@ function MemeGallery({ subreddit = 'memes' }) {
   // Add a new state variable to track if the first page has been loaded
   const [firstPageLoaded, setFirstPageLoaded] = useState(false);
   
+  const navigate = useNavigate();
+
+  // Add this state at the top level of the component
+  const [showRelatedFor, setShowRelatedFor] = useState(null);
+
+  // Handler: Download media
+  const handleDownload = (mediaUrl, title) => {
+    if (!mediaUrl) return;
+    // Create a temporary anchor to trigger download
+    const link = document.createElement('a');
+    link.href = mediaUrl;
+    link.download = title ? `${title}` : 'download';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Handler: Show similar subreddits (from meme data, e.g., crossposts)
+  const getRelatedSubreddits = (meme) => {
+    // Try to extract related subreddits from crossposts or other available fields
+    const related = new Set();
+    if (meme.data.crosspost_parent_list && Array.isArray(meme.data.crosspost_parent_list)) {
+      meme.data.crosspost_parent_list.forEach(cp => {
+        if (cp.subreddit && cp.subreddit !== meme.data.subreddit) {
+          related.add(cp.subreddit);
+        }
+      });
+    }
+    // Optionally, add more logic here for other sources of related subreddits
+    return Array.from(related);
+  };
+
   useEffect(() => {
     // Reset state when subreddit changes
     setMemes([]);
@@ -552,20 +586,100 @@ function MemeGallery({ subreddit = 'memes' }) {
         className="masonry-grid"
         columnClassName="masonry-grid_column"
       >
-        {memes.map((meme, index) => (
-          <div 
-            className="masonry-item" 
-            key={meme.data.id || index}
-            ref={index === memes.length - 1 ? lastMemeElementRef : null}
-          >
-            {renderedMedia[meme.data.id] || <div className="loading">Loading media...</div>}
-            <p className="p-3 text-sm">
-              <Link to={`/r/${subreddit}/${meme.data.id}`} className="meme-link">
-                {meme.data.title}
-              </Link>
-            </p>
-          </div>
-        ))}
+        {memes.map((meme, index) => {
+          // Extract tags if available (Reddit doesn't provide tags, but we can use flair_text)
+          const tags = meme.data.link_flair_text
+            ? [meme.data.link_flair_text]
+            : [];
+
+          // Use the best media URL for download/search
+          let mediaUrl = meme.data.url;
+          if (meme.data.media && meme.data.media.reddit_video) {
+            mediaUrl = meme.data.media.reddit_video.fallback_url;
+          } else if (
+            meme.data.preview &&
+            meme.data.preview.reddit_video_preview &&
+            meme.data.preview.reddit_video_preview.fallback_url
+          ) {
+            mediaUrl = meme.data.preview.reddit_video_preview.fallback_url;
+          }
+
+          // Related subreddits
+          const relatedSubreddits = getRelatedSubreddits(meme);
+
+          return (
+            <div 
+              className="masonry-item" 
+              key={meme.data.id || index}
+              ref={index === memes.length - 1 ? lastMemeElementRef : null}
+            >
+              {renderedMedia[meme.data.id] || <div className="loading">Loading media...</div>}
+              <p className="p-3 text-sm">
+                <Link to={`/r/${subreddit}/${meme.data.id}`} className="meme-link">
+                  {meme.data.title}
+                </Link>
+              </p>
+              {/* Action icons row */}
+              <div className="flex flex-wrap gap-2 px-3 pb-2 text-lg items-center">
+                {/* Download */}
+                <button
+                  title="Download"
+                  onClick={() => handleDownload(mediaUrl, meme.data.title)}
+                  className="hover:text-blue-500"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                >
+                  <TbDownload />
+                </button>
+                {/* Show similar subreddits */}
+                {relatedSubreddits.length > 0 && (
+                  <div className="relative">
+                    <button
+                      title="Show similar subreddits"
+                      onClick={() =>
+                        setShowRelatedFor(
+                          showRelatedFor === meme.data.id ? null : meme.data.id
+                        )
+                      }
+                      className="hover:text-purple-500"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                    >
+                      <TbPuzzle />
+                    </button>
+                    {showRelatedFor === meme.data.id && (
+                      <div className="absolute z-10 bg-white border rounded shadow p-2 mt-1 min-w-[150px]">
+                        <div className="font-semibold text-xs mb-1">Related subreddits:</div>
+                        {relatedSubreddits.map((sub, i) => (
+                          <button
+                            key={sub}
+                            className="block text-left w-full hover:bg-gray-100 px-2 py-1 text-sm"
+                            onClick={() => {
+                              setShowRelatedFor(null);
+                              navigate(`/r/${sub}`);
+                            }}
+                          >
+                            r/{sub}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* Tags */}
+                {tags.length > 0 && tags.map((tag, i) => (
+                  <button
+                    key={i}
+                    title={`Search tag: ${tag}`}
+                    onClick={() => navigate(`/search?tag=${encodeURIComponent(tag)}`)}
+                    className="hover:text-pink-500 px-1 flex items-center gap-1"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                  >
+                    <TbTag className="inline" /> <span className="text-xs">{tag}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </Masonry>
       
       {isLoading && <div className="loading">Loading more memes...</div>}

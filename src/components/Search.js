@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 
@@ -12,6 +12,24 @@ function Search() {
   const [hoveredSubredditId, setHoveredSubredditId] = useState(null);
   const [timeoutIds, setTimeoutIds] = useState({});
   const [hasSearched, setHasSearched] = useState(false);
+  const location = useLocation();
+
+  // Helper to extract tag from query string
+  const getTagFromQuery = () => {
+    const params = new URLSearchParams(location.search);
+    return params.get('tag') || '';
+  };
+
+  // Effect: If ?tag= is present in URL, auto-search for that tag
+  useEffect(() => {
+    const tag = getTagFromQuery();
+    if (tag) {
+      setSearchTerm(tag);
+      setHasSearched(true);
+      handleSearch(tag);
+    }
+    // eslint-disable-next-line
+  }, [location.search]);
 
   useEffect(() => {
     // Load data from local storage on component mount
@@ -172,7 +190,7 @@ function Search() {
           <form className="flex gap-2" onSubmit={handleSearchSubmit}>
             <input
               type="text"
-              placeholder="Enter subreddit name..."
+              placeholder="Enter subreddit name or tag..."
               value={searchTerm}
               onChange={handleSearchChange}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 flex-1"
